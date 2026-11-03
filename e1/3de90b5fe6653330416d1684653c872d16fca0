@@ -1,0 +1,19 @@
+tests/format.test.ts
+  s_85c44f1217083a::t_2bd0b758ad0805 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e13de90b5fe6653330416d1684653c872d16fca0",
+  "prompts": {},
+  "sessions": {
+    "s_85c44f1217083a": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "gray-reward",
+        "model": "unknown"
+      },
+      "human_author": "vickhunter <motricalavictor@gmail.com>"
+    }
+  }
+}
