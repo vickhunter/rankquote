@@ -1,0 +1,137 @@
+import { useMemo } from 'react'
+import { Award, Landmark, Plus, Phone, Trash2 } from 'lucide-react'
+import type { Config, Pratica, TenderQuote } from '../lib/types'
+import { emptyTenderQuote } from '../lib/types'
+import { evaluateQuotes, pickRecommended, rankQuotes } from '../lib/engine/basetender'
+import { suggestMarkup } from '../lib/engine/markup'
+import { eur, num } from '../lib/format'
+import { Badge, Button, Card, Field, NumberInput, SectionHeader, TextInput, Toggle } from './ui'
+
+interface Props {
+  pratica: Pratica
+  config: Config
+  update: (patch: Partial<Pratica>) => void
+}
+
+export default function BasetenderPanel({ pratica, config, update }: Props) {
+  const suggestion = useMemo(() => suggestMarkup(pratica.kmGoogleMaps, pratica.urgency, config), [pratica.kmGoogleMaps, pratica.urgency, config])
+  const markup = pratica.markupPct ?? suggestion.pct
+  const evaluated = useMemo(() => rankQuotes(evaluateQuotes(pratica, markup, config)), [pratica, markup, config])
+  const recommended = useMemo(() => pickRecommended(evaluated), [evaluated])
+
+  function addQuote() {
+    update({ tenderQuotes: [...pratica.tenderQuotes, emptyTenderQuote()] })
+  }
+
+  function updateQuote(id: string, patch: Partial<TenderQuote>) {
+    update({ tenderQuotes: pratica.tenderQuotes.map((q) => (q.id === id ? { ...q, ...patch } : q)) })
+  }
+
+  function removeQuote(id: string) {
+    update({ tenderQuotes: pratica.tenderQuotes.filter((q) => q.id !== id) })
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <SectionHeader
+          icon={<Landmark size={18} />}
+          title="Quotazioni basetender"
+          subtitle="Prima si scarta chi non è adatto, a qualunque prezzo. Poi si sceglie tra le valide: prezzo, affidabilità, margine sull'orario"
+          right={
+            <Button onClick={addQuote} variant="soft" className="whitespace-nowrap">
+              <Plus size={13} /> Aggiungi quotazione
+            </Button>
+          }
+        />
+        <div className="space-y-3 px-5 py-4">
+          {pratica.tenderQuotes.length === 0 && (
+            <p className="rounded-lg bg-slate-50 p-4 text-xs text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+              Nessuna quotazione ricevuta. Pubblica la richiesta su basetender, poi inserisci qui le risposte dei vettori man mano che arrivano: non è detto che la prima sia la migliore, né che la più economica sia quella giusta.
+            </p>
+          )}
+          {evaluated.map((e) => {
+            const q = e.quote
+            const isRecommended = recommended !== null && q.id === recommended.quote.id
+            return (
+              <div key={q.id} className={`rounded-xl border p-4 ${!e.valid ? 'border-rose-200 bg-rose-50/50 dark:border-rose-900 dark:bg-rose-950/20' : isRecommended ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-800'}`}>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <Field label="Vettore">
+                    <TextInput value={q.carrier} onChange={(v) => updateQuote(q.id, { carrier: v })} placeholder="Nome vettore" />
+                  </Field>
+                  <Field label="Prezzo offerto">
+                    <NumberInput value={q.priceEur} onChange={(v) => updateQuote(q.id, { priceEur: v })} placeholder="€" min={0} suffix="€" />
+                  </Field>
+                  <Field label="Portata dichiarata">
+                    <NumberInput value={q.payloadKg} onChange={(v) => updateQuote(q.id, { payloadKg: v })} placeholder="kg" min={0} suffix="kg" />
+                  </Field>
+                  <Field label="Consegna promessa">
+                    <TextInput type="datetime-local" value={q.promisedDelivery} onChange={(v) => updateQuote(q.id, { promisedDelivery: v })} />
+                  </Field>
+                  <Field label="Posti pallet">
+                    <NumberInput value={q.maxPallets} onChange={(v) => updateQuote(q.id, { maxPallets: v })} placeholder="n°" min={0} />
+                  </Field>
+                  <Field label="Ha la sponda idraulica">
+                    <Toggle checked={q.canDoTailLift} onChange={(v) => updateQuote(q.id, { canDoTailLift: v })} labelYes="Sì" labelNo="No" />
+                  </Field>
+                  <Field label="Vettore noto nella rete">
+                    <Toggle checked={q.knownToNetwork} onChange={(v) => updateQuote(q.id, { knownToNetwork: v })} labelYes="Noto" labelNo="Nuovo" />
+                  </Field>
+                  <div className="flex items-end">
+                    <Button variant="danger" className="w-full" onClick={() => removeQuote(q.id)}>
+                      <Trash2 size={13} /> Elimina
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {!e.valid ? (
+                    <Badge tone="red">Scartata — non rispetta i requisiti</Badge>
+                  ) : isRecommended ? (
+                    <Badge tone="green">
+                      <Award size={11} /> Consigliata
+                    </Badge>
+                  ) : (
+                    <Badge tone="green">Valida</Badge>
+                  )}
+                  {e.valid && e.clientPrice !== null && (
+                    <Badge tone="indigo">
+                      Al cliente: {eur(e.rangeLow)}–{eur(e.rangeHigh)} con markup {markup}%
+                    </Badge>
+                  )}
+                  {e.timeMarginHours !== null && (
+                    <Badge tone={e.timeMarginHours < 0 ? 'red' : e.timeMarginHours <= 2 ? 'amber' : 'slate'}>
+                      Margine orario: {num(e.timeMarginHours, ' h')}
+                    </Badge>
+                  )}
+                </div>
+
+                {e.exclusions.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {e.exclusions.map((x) => (
+                      <li key={x} className="text-[11px] font-medium text-rose-600 dark:text-rose-400">✕ {x}</li>
+                    ))}
+                  </ul>
+                )}
+                {e.warnings.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {e.warnings.map((w) => (
+                      <li key={w} className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                        {w.toLowerCase().includes('telefon') ? <Phone size={11} /> : null} {w}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {isRecommended && (
+                  <p className="mt-2 text-[11px] text-emerald-700 dark:text-emerald-300">
+                    Miglior bilancio tra prezzo, affidabilità (vettore noto) e margine di sicurezza sull'orario.
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </Card>
+    </div>
+  )
+}
