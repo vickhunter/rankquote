@@ -41,17 +41,23 @@ export function evaluateQuote(q: TenderQuote, p: Pratica, markupPct: number, con
   if (p.delivery.tassativo && p.delivery.timeTo && q.promisedDelivery) {
     if (margin !== null && margin < 0) {
       exclusions.push(`Consegna promessa oltre il termine tassativo del cliente`)
-    } else if (margin !== null && margin === 0) {
+    } else if (margin === 0) {
       warnings.push('Consegna esattamente all\u2019ultimo minuto utile: zero margine sugli imprevisti')
+    } else if (margin !== null && margin < 2) {
+      warnings.push('Orario tassativo con meno di 2 ore di margine: poco spazio agli imprevisti')
     }
   } else if (margin !== null && margin < 2) {
     warnings.push('Margine di sicurezza sull\u2019orario molto stretto')
+  }
+  if (!q.promisedDelivery) {
+    warnings.push('Orario di consegna promessa non dichiarato: verificarlo prima di scegliere')
   }
 
   if (!q.knownToNetwork) {
     warnings.push('Vettore nuovo o poco conosciuto: telefonare prima di confermare')
   }
   if (q.payloadKg === null) warnings.push('Portata non dichiarata: verificarla prima di scegliere')
+  if (q.maxPallets === null) warnings.push('Posti pallet non dichiarati: verificarli prima di scegliere')
 
   let clientPrice: number | null = null
   let rangeLow: number | null = null

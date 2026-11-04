@@ -77,6 +77,21 @@ describe('evaluateQuote — avvisi', () => {
     expect(ev.warnings.join(' ')).toMatch(/margine di sicurezza/i)
   })
 
+  it('con orario tassativo, margine sotto le 2 ore avvisa senza scartare', () => {
+    const p = base()
+    p.delivery.tassativo = true
+    const ev = evaluateQuote(quote({ promisedDelivery: '2026-11-04T12:00' }), p, 12, defaultConfig)
+    expect(ev.valid).toBe(true)
+    expect(ev.warnings.join(' ')).toMatch(/meno di 2 ore di margine/i)
+  })
+
+  it('posti pallet o orario di consegna non dichiarati: avvisa di verificare', () => {
+    const ev = evaluateQuote(quote({ maxPallets: null, promisedDelivery: '' }), base(), 12, defaultConfig)
+    expect(ev.valid).toBe(true)
+    expect(ev.warnings.join(' ')).toMatch(/posti pallet non dichiarati/i)
+    expect(ev.warnings.join(' ')).toMatch(/consegna promessa non dichiarato/i)
+  })
+
   it('senza orario tassativo, margine ampio non avvisa', () => {
     const ev = evaluateQuote(quote({ promisedDelivery: '2026-11-04T08:00' }), base(), 12, defaultConfig)
     expect(ev.warnings.join(' ')).not.toMatch(/margine di sicurezza/i)

@@ -1,8 +1,19 @@
 import { useState } from 'react'
-import { RotateCcw, Settings2, X } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import type { Config, VehicleId } from '../lib/types'
 import { defaultConfig } from '../lib/types'
-import { Button, Card, Field, NumberInput } from './ui'
+import { Field, NumberInput } from './fields'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface Props {
   config: Config
@@ -18,29 +29,21 @@ export default function SettingsModal({ config, onChange, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="my-8 w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
-        <Card>
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <Settings2 size={18} className="text-indigo-500" />
-              <div>
-                <h2 className="text-sm font-semibold">Parametri di calcolo</h2>
-                <p className="text-xs text-slate-500">Modifica qui tariffe, minimi e forchetta del margine: tutti i calcoli si adeguano</p>
-              </div>
-            </div>
-            <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-              <X size={16} />
-            </button>
-          </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="border-b px-5 py-4">
+          <DialogTitle className="text-sm">Parametri di calcolo</DialogTitle>
+          <DialogDescription className="text-xs">Modifica tariffe, minimi e forchetta del margine: tutti i calcoli si adeguano</DialogDescription>
+        </DialogHeader>
 
+        <ScrollArea className="min-h-0 flex-1">
           <div className="space-y-6 px-5 py-5">
             <section>
-              <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Mezzi</h3>
+              <h3 className="mb-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Mezzi</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 {(['ducato', 'cassonato'] as VehicleId[]).map((id) => (
-                  <div key={id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                    <div className="mb-3 text-xs font-bold">{id === 'ducato' ? 'Furgone tipo Ducato' : 'Cassonato / telonato 8 posti'}</div>
+                  <div key={id} className="rounded-lg border p-4">
+                    <div className="mb-3 text-xs font-semibold">{id === 'ducato' ? 'Furgone tipo Ducato' : 'Cassonato / telonato 8 posti'}</div>
                     <div className="grid grid-cols-2 gap-3">
                       <Field label="Tariffa €/km">
                         <NumberInput value={draft.vehicles[id].tariffPerKm} onChange={(v) => patchVehicle(id, { tariffPerKm: v ?? 0 })} min={0} step={0.05} suffix="€" />
@@ -73,8 +76,10 @@ export default function SettingsModal({ config, onChange, onClose }: Props) {
               </div>
             </section>
 
+            <Separator />
+
             <section>
-              <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Chilometri e arrotondamenti</h3>
+              <h3 className="mb-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Chilometri e arrotondamenti</h3>
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Buffer minimo sui km" hint="«almeno il 2%» per deviazioni e imprevisti">
                   <NumberInput value={draft.kmBufferPct} onChange={(v) => setDraft({ ...draft, kmBufferPct: v ?? 0 })} min={0} step={0.5} suffix="%" />
@@ -88,8 +93,10 @@ export default function SettingsModal({ config, onChange, onClose }: Props) {
               </div>
             </section>
 
+            <Separator />
+
             <section>
-              <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Margine di guadagno (markup)</h3>
+              <h3 className="mb-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Margine di guadagno (markup)</h3>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <Field label="Minimo policy">
                   <NumberInput value={draft.markupMinPct} onChange={(v) => setDraft({ ...draft, markupMinPct: v ?? 0 })} min={0} step={0.5} suffix="%" />
@@ -112,32 +119,33 @@ export default function SettingsModal({ config, onChange, onClose }: Props) {
                   <NumberInput value={draft.suggestion.urgencyBonusPct['molto-urgente']} onChange={(v) => setDraft({ ...draft, suggestion: { ...draft.suggestion, urgencyBonusPct: { ...draft.suggestion.urgencyBonusPct, 'molto-urgente': v ?? 0 } } })} min={0} step={0.5} suffix="%" />
                 </Field>
               </div>
-              <p className="mt-2 text-[11px] text-slate-400">
+              <p className="mt-2 text-[11px] text-muted-foreground">
                 Tra tratta corta e lunga il suggerimento scende linearmente da {draft.markupMaxPct}% a {draft.markupMinPct}% in base ai km.
               </p>
             </section>
           </div>
+        </ScrollArea>
 
-          <div className="flex items-center justify-between border-t border-slate-100 px-5 py-4 dark:border-slate-800">
-            <Button variant="ghost" onClick={() => setDraft(JSON.parse(JSON.stringify(defaultConfig)))}>
-              <RotateCcw size={13} /> Ripristina default del documento
+        <DialogFooter className="flex-row justify-between border-t px-5 py-4 sm:justify-between">
+          <Button variant="outline" onClick={() => setDraft(JSON.parse(JSON.stringify(defaultConfig)))}>
+            <RotateCcw size={13} /> Ripristina default del documento
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>
+              Annulla
             </Button>
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={onClose}>
-                Annulla
-              </Button>
-              <Button
-                onClick={() => {
-                  onChange(draft)
-                  onClose()
-                }}
-              >
-                Salva parametri
-              </Button>
-            </div>
+            <Button
+              className="bg-brand text-brand-foreground hover:bg-brand/90"
+              onClick={() => {
+                onChange(draft)
+                onClose()
+              }}
+            >
+              Salva parametri
+            </Button>
           </div>
-        </Card>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

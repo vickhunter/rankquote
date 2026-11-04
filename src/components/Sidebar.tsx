@@ -1,7 +1,10 @@
 import { Download, Moon, Plus, Settings2, Sun, Trash2, Upload } from 'lucide-react'
 import type { Pratica } from '../lib/types'
 import { checklistStatus } from '../lib/engine/checklist'
-import { Button } from './ui'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
 interface Props {
   pratiche: Pratica[]
@@ -24,53 +27,73 @@ function praticaLabel(p: Pratica): string {
 
 export default function Sidebar({ pratiche, selectedId, dark, onSelect, onNew, onDelete, onToggleDark, onOpenSettings, onExport, onImport }: Props) {
   return (
-    <aside className="flex h-full w-72 shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-center gap-2.5 px-4 py-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-extrabold text-white shadow-sm">RQ</div>
+    <aside className="flex h-full w-72 shrink-0 flex-col border-r bg-background">
+      <div className="flex items-center gap-2.5 px-4 pt-5 pb-4">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand font-mono text-sm font-bold text-brand-foreground shadow-sm">
+          RQ
+        </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold tracking-tight">RankQuote</div>
-          <div className="text-[11px] text-slate-400">Checklist & quotazioni trasporti</div>
+          <div className="truncate text-sm font-semibold tracking-tight">RankQuote</div>
+          <div className="text-[11px] text-muted-foreground">Checklist & quotazioni trasporti</div>
         </div>
       </div>
 
-      <div className="px-4 pb-3">
-        <Button className="w-full" onClick={onNew}>
+      <div className="px-4 pb-4">
+        <Button className="w-full bg-brand text-brand-foreground shadow-sm hover:bg-brand/90" onClick={onNew}>
           <Plus size={14} /> Nuova pratica
         </Button>
       </div>
 
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-2">
         {pratiche.length === 0 && (
-          <p className="px-2 py-6 text-center text-xs text-slate-400">
+          <p className="px-3 py-8 text-center text-xs leading-relaxed text-muted-foreground">
             Nessuna pratica salvata.
             <br />
-            Crea la prima: i dati restano su questo computer.
+            Crea la prima: i dati restano
+            <br />
+            su questo computer.
           </p>
         )}
         {pratiche.map((p) => {
           const status = checklistStatus(p)
           const active = p.id === selectedId
+          const incomplete = status.criticalMissing.length > 0
           return (
             <div
               key={p.id}
-              className={`group flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 transition ${active ? 'bg-indigo-50 ring-1 ring-indigo-200 dark:bg-indigo-950/50 dark:ring-indigo-900' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'}`}
-              onClick={() => onSelect(p.id)}
+              className={cn(
+                'group flex items-center gap-2.5 rounded-lg border px-3 py-2.5 transition-all',
+                active
+                  ? 'border-border bg-accent shadow-sm'
+                  : 'border-transparent hover:border-border hover:bg-accent/60',
+              )}
             >
-              <span className={`h-2 w-2 shrink-0 rounded-full ${status.criticalMissing.length > 0 ? 'bg-amber-400' : 'bg-emerald-500'}`} title={status.criticalMissing.length > 0 ? 'Dati critici mancanti' : 'Completa'} />
-              <div className="min-w-0 flex-1">
-                <div className={`truncate text-xs font-semibold ${active ? 'text-indigo-700 dark:text-indigo-300' : ''}`}>{praticaLabel(p)}</div>
-                <div className="truncate text-[10px] text-slate-400">
-                  {p.clientCompany || 'Cliente da indicare'} · {status.pct}%
-                </div>
-              </div>
+              <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left" onClick={() => onSelect(p.id)}>
+                <span
+                  className={cn('h-1.5 w-1.5 shrink-0 rounded-full', incomplete ? 'bg-amber-500' : 'bg-emerald-500')}
+                  title={incomplete ? 'Dati critici mancanti' : 'Completa'}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-semibold">{praticaLabel(p)}</span>
+                  <span className="mt-0.5 flex items-center gap-2">
+                    <span className="truncate text-[10px] text-muted-foreground">{p.clientCompany || 'Cliente da indicare'}</span>
+                    <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                      <span className="h-1 w-9 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className={cn('block h-full rounded-full', incomplete ? 'bg-amber-500' : 'bg-emerald-500')}
+                          style={{ width: `${status.pct}%` }}
+                        />
+                      </span>
+                      <span className="tnum text-[10px] text-muted-foreground">{status.pct}%</span>
+                    </span>
+                  </span>
+                </span>
+              </button>
               <button
                 type="button"
-                className="rounded-md p-1 text-slate-300 opacity-0 transition hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 dark:hover:bg-rose-950/50"
-                title="Elimina pratica"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete(p.id)
-                }}
+                aria-label="Elimina pratica"
+                className="rounded-md p-1 text-muted-foreground/50 opacity-0 transition hover:bg-rose-500/10 hover:text-rose-500 group-hover:opacity-100 focus-visible:opacity-100"
+                onClick={() => onDelete(p.id)}
               >
                 <Trash2 size={13} />
               </button>
@@ -79,12 +102,13 @@ export default function Sidebar({ pratiche, selectedId, dark, onSelect, onNew, o
         })}
       </nav>
 
-      <div className="space-y-2 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+      <Separator />
+      <div className="space-y-2 px-4 py-3">
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="ghost" onClick={onExport} disabled={pratiche.length === 0}>
+          <Button variant="outline" size="sm" onClick={onExport} disabled={pratiche.length === 0} className="text-xs">
             <Download size={13} /> Esporta
           </Button>
-          <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+          <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium shadow-xs transition hover:bg-accent hover:text-accent-foreground">
             <Upload size={13} /> Importa
             <input
               type="file"
@@ -99,12 +123,17 @@ export default function Sidebar({ pratiche, selectedId, dark, onSelect, onNew, o
           </label>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="ghost" onClick={onOpenSettings}>
+          <Button variant="outline" size="sm" onClick={onOpenSettings} className="text-xs">
             <Settings2 size={13} /> Parametri
           </Button>
-          <Button variant="ghost" onClick={onToggleDark}>
-            {dark ? <Sun size={13} /> : <Moon size={13} />} {dark ? 'Chiara' : 'Scura'}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={onToggleDark} className="text-xs">
+                {dark ? <Sun size={13} /> : <Moon size={13} />} {dark ? 'Chiara' : 'Scura'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Cambia tema</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </aside>

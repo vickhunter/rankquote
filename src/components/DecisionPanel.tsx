@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, Copy, Gauge, Landmark, Percent, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, Copy, Landmark, Percent, XCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import type { Config, Pratica } from '../lib/types'
 import { decideMode } from '../lib/engine/mode'
 import { computeRegoletta, negotiationBounds } from '../lib/engine/pricing'
@@ -7,7 +8,15 @@ import { suggestMarkup } from '../lib/engine/markup'
 import { evaluateVehicles, vehicleNames } from '../lib/engine/vehicles'
 import { canQuoteRegoletta } from '../lib/engine/checklist'
 import { eur, num } from '../lib/format'
-import { Badge, Card, SectionHeader, Select } from './ui'
+import { SectionHeader, SelectField, ToneBadge } from './fields'
+import { Card, CardContent } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
+import { NumberTicker } from '@/components/ui/number-ticker'
+import { ShineBorder } from '@/components/ui/shine-border'
+import { cn } from '@/lib/utils'
 
 interface Props {
   pratica: Pratica
@@ -46,30 +55,36 @@ export default function DecisionPanel({ pratica, config, update }: Props) {
   }, [pricing, pratica, config.kmBufferPct])
 
   function copySummary() {
-    navigator.clipboard.writeText(summary)
+    navigator.clipboard.writeText(summary).then(() => toast.success('Riepilogo copiato'))
   }
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card className="gap-0 py-0">
         <SectionHeader
-          icon={<Gauge size={18} />}
+          icon={<Calculator size={18} />}
           title="Mezzo e modalità"
-          subtitle="La regola: nazionale ordinario dentro i mezzi standard → regoletta; complesso, urgente o estero → basetender"
+          subtitle="Nazionale ordinario dentro i mezzi standard → regoletta; complesso, urgente o estero → basetender"
         />
-        <div className="space-y-3 px-5 py-4">
+        <CardContent className="space-y-3 px-5 py-4">
           {fits.map((f) => (
-            <div key={f.vehicle} className={`rounded-xl border p-3 ${f.fits ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/30' : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/40'}`}>
+            <div
+              key={f.vehicle}
+              className={cn(
+                'rounded-lg border p-3 transition-colors',
+                f.fits ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-border bg-muted/40',
+              )}
+            >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold">{vehicleNames[f.vehicle]}</span>
+                <span className="text-xs font-semibold">{vehicleNames[f.vehicle]}</span>
                 {f.fits ? (
-                  <Badge tone="green">
+                  <ToneBadge tone="green">
                     <CheckCircle2 size={11} /> Adatto
-                  </Badge>
+                  </ToneBadge>
                 ) : (
-                  <Badge tone="slate">
+                  <ToneBadge tone="slate">
                     <XCircle size={11} /> Escluso
-                  </Badge>
+                  </ToneBadge>
                 )}
               </div>
               <ul className="mt-2 space-y-1">
@@ -85,37 +100,38 @@ export default function DecisionPanel({ pratica, config, update }: Props) {
                     </li>
                   ))}
               </ul>
-              <div className="tnum mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+              <div className="tnum mt-2 text-[11px] text-muted-foreground">
                 {eur(config.vehicles[f.vehicle].tariffPerKm)}/km · minimo {eur(config.vehicles[f.vehicle].minimoEur)} · portata {num(f.payloadKg, ' kg')}
                 {pratica.tailLiftRequired && config.vehicles[f.vehicle].hasTailLift ? ' (ridotta con sponda)' : ''}
               </div>
             </div>
           ))}
 
-          <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+          <div className="rounded-lg border p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold">Modalità di quotazione</span>
-              <Badge tone={decision.mode === 'regoletta' ? 'indigo' : 'amber'}>
+              <span className="text-xs font-semibold">Modalità di quotazione</span>
+              <ToneBadge tone={decision.mode === 'regoletta' ? 'brand' : 'amber'}>
                 {decision.mode === 'regoletta' ? <Calculator size={11} /> : <Landmark size={11} />}
-                {decision.mode === 'regoletta' ? 'REGOLETTA' : 'BASETENDER'}
-              </Badge>
+                {decision.mode === 'regoletta' ? 'Regoletta' : 'Basetender'}
+              </ToneBadge>
             </div>
             {decision.basetenderReasons.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {decision.basetenderReasons.map((r) => (
-                  <li key={r} className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                  <li key={r} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
                     <ArrowRight size={11} className="mt-0.5 shrink-0 text-amber-500" /> {r}
                   </li>
                 ))}
               </ul>
             )}
             {decision.warning && (
-              <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-rose-50 p-2 text-[11px] font-medium text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-                <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {decision.warning}
-              </div>
+              <Alert variant="destructive" className="mt-2 border-rose-500/30 bg-rose-500/8 py-2 text-rose-700 dark:text-rose-300">
+                <AlertTriangle size={12} className="text-rose-500" />
+                <AlertDescription className="text-[11px] font-medium">{decision.warning}</AlertDescription>
+              </Alert>
             )}
             <div className="mt-3">
-              <Select
+              <SelectField
                 value={pratica.quoteModeOverride}
                 onChange={(v) => update({ quoteModeOverride: v })}
                 options={[
@@ -126,100 +142,96 @@ export default function DecisionPanel({ pratica, config, update }: Props) {
               />
             </div>
           </div>
-        </div>
+        </CardContent>
       </Card>
 
       {decision.mode === 'regoletta' && (
-        <Card>
-          <SectionHeader icon={<Calculator size={18} />} title="La regoletta, passo per passo" subtitle="Ogni passaggio è mostrato: nessun numero magico" />
-          <div className="px-5 py-4">
+        <Card className="gap-0 py-0">
+          <SectionHeader icon={<Percent size={18} />} title="La regoletta, passo per passo" subtitle="Ogni passaggio è mostrato: nessun numero magico" />
+          <CardContent className="px-5 py-4">
             {!quote.ok ? (
-              <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                <span>Inserisci {quote.missing.join(', ')} nella checklist per calcolare la quotazione.</span>
-              </div>
+              <Alert className="border-amber-500/30 bg-amber-500/8 py-3 text-amber-800 dark:text-amber-300">
+                <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400" />
+                <AlertDescription className="text-xs">Inserisci {quote.missing.join(', ')} nella checklist per calcolare la quotazione.</AlertDescription>
+              </Alert>
             ) : pricing ? (
               <div className="space-y-4">
-                <ol className="space-y-2">
-                  <Step n={1} title="I chilometri" formula={`${num(pricing.kmGoogleMaps, ' km')} + ${config.kmBufferPct}% = ${num(pricing.kmBuffered, ' km')} → arrotondato per eccesso a ${num(pricing.kmRounded, ' km')}`} note="Meglio abbondare: copre deviazioni e imprevisti" />
+                <ol className="ml-2.5 space-y-3.5 border-l border-dashed border-border">
+                  <Step n={1} title="I chilometri" formula={`${num(pricing.kmGoogleMaps, ' km')} + ${config.kmBufferPct}% = ${num(pricing.kmBuffered, ' km')} → ${num(pricing.kmRounded, ' km')}`} note="Meglio abbondare: copre deviazioni e imprevisti" />
                   <Step n={2} title="Andata e ritorno" formula={`${num(pricing.kmRounded, ' km')} × 2 = ${num(pricing.kmTotal, ' km')}`} note="Il ritorno si conta sempre: il vettore deve rientrare" />
-                  <Step n={3} title="La tariffa" formula={`${num(pricing.kmTotal, ' km')} × ${eur(pricing.tariffPerKm)}/km = ${eur(pricing.rawCarrierPrice)}`} note={pricing.minimoApplied ? `Sotto il minimo di ${eur(pricing.minimo)}: si quota il diritto di chiamata → ${eur(pricing.carrierPrice)}` : 'Questo è il prezzo del vettore: il tuo pavimento'} highlight={pricing.minimoApplied} />
+                  <Step n={3} title="La tariffa" formula={`${num(pricing.kmTotal, ' km')} × ${eur(pricing.tariffPerKm)}/km = ${eur(pricing.rawCarrierPrice)}`} note={pricing.minimoApplied ? `Sotto il minimo di ${eur(pricing.minimo)}: scatta il diritto di chiamata → ${eur(pricing.carrierPrice)}` : 'Questo è il prezzo del vettore: il tuo pavimento'} highlight={pricing.minimoApplied} />
                   <Step n={4} title="Il markup" formula={`${eur(pricing.carrierPrice)} + ${pricing.markupPct}% = ${eur(pricing.clientPrice)}`} note="Dal 10 al 15%, mai meno del 10%: è policy aziendale" />
                 </ol>
 
-                <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-4 dark:border-indigo-900 dark:bg-indigo-950/40">
+                <div className="relative overflow-hidden rounded-lg border border-brand/25 bg-brand/5 p-4">
+                  <ShineBorder shineColor={['#f97316', '#fbbf24']} duration={10} borderWidth={1.5} />
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200">Prezzo da comunicare al cliente</span>
-                    <Badge tone="indigo">range sulle decine</Badge>
+                    <span className="text-xs font-semibold text-foreground">Prezzo da comunicare al cliente</span>
+                    <Badge variant="outline" className="border-brand/30 text-[10px] font-medium tracking-wide text-brand uppercase">range sulle decine</Badge>
                   </div>
-                  <div className="tnum mt-1 text-3xl font-extrabold tracking-tight text-indigo-700 dark:text-indigo-300">
-                    {eur(pricing.rangeLow)} – {eur(pricing.rangeHigh)}
+                  <div className="tnum mt-1.5 text-3xl font-bold tracking-tight text-brand">
+                    <NumberTicker value={pricing.rangeLow} /> € – <NumberTicker value={pricing.rangeHigh} /> €
                   </div>
-                  <div className="tnum mt-1 text-[11px] text-indigo-800/70 dark:text-indigo-300/70">
+                  <div className="tnum mt-1 text-[11px] text-muted-foreground">
                     Margine: {eur(pricing.marginEur)} · prezzo esatto {eur(pricing.clientPrice)}
                   </div>
-                  <button
-                    type="button"
-                    onClick={copySummary}
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500"
-                  >
+                  <Button size="sm" onClick={copySummary} className="mt-3 bg-brand text-brand-foreground hover:bg-brand/90">
                     <Copy size={12} /> Copia riepilogo per il cliente
-                  </button>
+                  </Button>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                  <div className="flex items-center gap-1.5 text-xs font-bold">
-                    <Percent size={13} className="text-indigo-500" /> Margine di guadagno ({config.markupMinPct}–{config.markupMaxPct}%)
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                    <Percent size={13} className="text-brand" /> Margine di guadagno ({config.markupMinPct}–{config.markupMaxPct}%)
                   </div>
-                  <input
-                    type="range"
+                  <Slider
                     min={config.markupMinPct}
                     max={config.markupMaxPct}
                     step={0.5}
-                    value={effectiveMarkup}
-                    onChange={(e) => update({ markupPct: Number(e.target.value) })}
-                    className="mt-3"
+                    value={[effectiveMarkup]}
+                    onValueChange={([v]) => update({ markupPct: v })}
+                    className="mt-4"
                   />
-                  <div className="tnum mt-1 flex justify-between text-[11px] text-slate-400">
+                  <div className="tnum mt-1.5 flex justify-between text-[11px] text-muted-foreground">
                     <span>{config.markupMinPct}%</span>
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{effectiveMarkup}%</span>
+                    <span className="text-sm font-bold text-foreground">{effectiveMarkup}%</span>
                     <span>{config.markupMaxPct}%</span>
                   </div>
-                  <div className="mt-2 flex items-start justify-between gap-2 rounded-lg bg-slate-50 p-2.5 dark:bg-slate-800/60">
-                    <span className="text-[11px] leading-snug text-slate-600 dark:text-slate-300">
-                      <span className="font-semibold">Suggerimento: {suggestion.pct}%</span> — {suggestion.reason}
+                  <div className="mt-2.5 flex items-start justify-between gap-2 rounded-md bg-muted/60 p-2.5">
+                    <span className="text-[11px] leading-snug text-muted-foreground">
+                      <span className="font-semibold text-foreground">Suggerimento: {suggestion.pct}%</span> — {suggestion.reason}
                     </span>
-                    <button type="button" onClick={() => update({ markupPct: suggestion.pct })} className="shrink-0 rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white dark:bg-slate-100 dark:text-slate-900">
+                    <Button size="sm" variant="secondary" onClick={() => update({ markupPct: suggestion.pct })} className="h-6 shrink-0 px-2 text-[11px]">
                       Usa
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 {bounds && (
-                  <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                    <div className="text-xs font-bold">Limiti per la trattativa</div>
-                    <div className="tnum mt-2 grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-lg bg-rose-50 p-2 dark:bg-rose-950/40">
-                        <div className="text-[10px] font-semibold uppercase tracking-wide text-rose-500">Pavimento (vettore)</div>
-                        <div className="text-sm font-bold text-rose-700 dark:text-rose-300">{eur(bounds.carrierFloorEur)}</div>
+                  <div className="rounded-lg border p-4">
+                    <div className="text-xs font-semibold">Limiti per la trattativa</div>
+                    <div className="tnum mt-2.5 grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-md bg-rose-500/8 p-2.5">
+                        <div className="text-[10px] font-semibold tracking-wide text-rose-600 uppercase dark:text-rose-400">Pavimento (vettore)</div>
+                        <div className="mt-0.5 text-sm font-bold text-rose-700 dark:text-rose-300">{eur(bounds.carrierFloorEur)}</div>
                       </div>
-                      <div className="rounded-lg bg-amber-50 p-2 dark:bg-amber-950/40">
-                        <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-600">Minimo policy +{config.markupMinPct}%</div>
-                        <div className="text-sm font-bold text-amber-700 dark:text-amber-300">{eur(bounds.policyMinClientEur)}</div>
+                      <div className="rounded-md bg-amber-500/8 p-2.5">
+                        <div className="text-[10px] font-semibold tracking-wide text-amber-600 uppercase dark:text-amber-400">Minimo +{config.markupMinPct}%</div>
+                        <div className="mt-0.5 text-sm font-bold text-amber-700 dark:text-amber-300">{eur(bounds.policyMinClientEur)}</div>
                       </div>
-                      <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/40">
-                        <div className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">Spazio di manovra</div>
-                        <div className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{eur(bounds.roomEur)}</div>
+                      <div className="rounded-md bg-emerald-500/8 p-2.5">
+                        <div className="text-[10px] font-semibold tracking-wide text-emerald-600 uppercase dark:text-emerald-400">Spazio manovra</div>
+                        <div className="mt-0.5 text-sm font-bold text-emerald-700 dark:text-emerald-300">{eur(bounds.roomEur)}</div>
                       </div>
                     </div>
-                    <p className="mt-2 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                    <p className="mt-2.5 text-[11px] leading-snug text-muted-foreground">
                       Sotto {eur(bounds.policyMinClientEur)} non stai facendo uno sconto: stai lavorando in perdita o violando la policy. Concedere poche decine di euro può voler dire rinunciare a metà del guadagno.
                     </p>
                   </div>
                 )}
               </div>
             ) : null}
-          </div>
+          </CardContent>
         </Card>
       )}
     </div>
@@ -228,12 +240,19 @@ export default function DecisionPanel({ pratica, config, update }: Props) {
 
 function Step({ n, title, formula, note, highlight }: { n: number; title: string; formula: string; note: string; highlight?: boolean }) {
   return (
-    <li className="flex gap-3">
-      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${highlight ? 'bg-amber-500 text-white' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'}`}>{n}</span>
+    <li className="relative pl-5">
+      <span
+        className={cn(
+          'absolute top-0 -left-2.5 flex h-5 w-5 items-center justify-center rounded-md font-mono text-[10px] font-bold',
+          highlight ? 'bg-amber-500 text-white' : 'bg-muted text-muted-foreground',
+        )}
+      >
+        {n}
+      </span>
       <div className="min-w-0">
         <div className="text-xs font-semibold">{title}</div>
-        <div className="tnum text-xs text-slate-600 dark:text-slate-300">{formula}</div>
-        <div className="text-[11px] text-slate-400 dark:text-slate-500">{note}</div>
+        <div className="tnum text-xs text-muted-foreground">{formula}</div>
+        <div className="text-[11px] text-muted-foreground/70">{note}</div>
       </div>
     </li>
   )

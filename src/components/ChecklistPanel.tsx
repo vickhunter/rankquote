@@ -1,7 +1,11 @@
 import { AlertTriangle, Boxes, ClipboardCheck, MapPin, PackageCheck, Truck } from 'lucide-react'
 import type { Cargo, Pratica, StopInfo, Urgency } from '../lib/types'
 import { checklistStatus } from '../lib/engine/checklist'
-import { Badge, Card, Field, NumberInput, SectionHeader, Select, TextInput, Toggle } from './ui'
+import { Field, NumberInput, SectionHeader, Segmented, SelectField, TextInput, ToneBadge } from './fields'
+import { Card, CardContent } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { cn } from '@/lib/utils'
 
 interface Props {
   pratica: Pratica
@@ -10,46 +14,55 @@ interface Props {
   updateStop: (stop: 'pickup' | 'delivery', patch: Partial<StopInfo>) => void
 }
 
+function Legend({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <legend className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+      <span className="text-brand">{icon}</span> {children}
+    </legend>
+  )
+}
+
 export default function ChecklistPanel({ pratica, update, updateCargo, updateStop }: Props) {
   const status = checklistStatus(pratica)
+  const hasCriticalMissing = status.criticalMissing.length > 0
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card className="gap-0 py-0">
         <SectionHeader
           icon={<ClipboardCheck size={18} />}
           title="Checklist informazioni cliente"
           subtitle="Chiedi tutto insieme, in un'unica risposta: senza questi dati non si può quotare nulla"
           right={
-            <div className="flex items-center gap-2">
-              <span className="tnum text-xs font-semibold text-slate-500">
+            <div className="flex items-center gap-2.5">
+              <span className="tnum text-xs font-medium text-muted-foreground">
                 {status.done}/{status.total}
               </span>
-              <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                <div
-                  className={`h-full rounded-full transition-all ${status.criticalMissing.length > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                  style={{ width: `${status.pct}%` }}
-                />
-              </div>
+              <Progress
+                value={status.pct}
+                className={cn('h-1.5 w-24', hasCriticalMissing ? '[&>div]:bg-amber-500' : '[&>div]:bg-emerald-500')}
+              />
             </div>
           }
         />
         {status.missing.length > 0 && (
-          <div className="flex items-start gap-2 border-b border-amber-100 bg-amber-50 px-5 py-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-            <span>
-              Da chiedere ancora:{' '}
-              {status.missing.map((m) => (
-                <span key={m.key} className="font-semibold">
-                  {m.label}
-                  {m !== status.missing[status.missing.length - 1] ? ', ' : ''}
-                </span>
-              ))}
-            </span>
+          <div className="border-b">
+            <Alert className="rounded-none border-0 border-amber-500/30 bg-amber-500/8 py-3 text-amber-800 dark:text-amber-300">
+              <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400" />
+              <AlertDescription className="text-xs">
+                Da chiedere ancora:{' '}
+                {status.missing.map((m, i) => (
+                  <span key={m.key} className="font-semibold">
+                    {m.label}
+                    {i < status.missing.length - 1 ? ', ' : ''}
+                  </span>
+                ))}
+              </AlertDescription>
+            </Alert>
           </div>
         )}
 
-        <div className="space-y-5 px-5 py-4">
+        <CardContent className="space-y-5 px-5 py-5">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Azienda cliente">
               <TextInput value={pratica.clientCompany} onChange={(v) => update({ clientCompany: v })} placeholder="es. Rossi Manufacturing Srl" />
@@ -60,9 +73,7 @@ export default function ChecklistPanel({ pratica, update, updateCargo, updateSto
           </div>
 
           <fieldset>
-            <legend className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              <MapPin size={12} /> Il viaggio
-            </legend>
+            <Legend icon={<MapPin size={12} />}>Il viaggio</Legend>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Luogo di ritiro">
                 <TextInput value={pratica.origin} onChange={(v) => update({ origin: v })} placeholder="es. Padova" />
@@ -71,7 +82,7 @@ export default function ChecklistPanel({ pratica, update, updateCargo, updateSto
                 <TextInput value={pratica.destination} onChange={(v) => update({ destination: v })} placeholder="es. Firenze" />
               </Field>
               <Field label="Tratta">
-                <Select
+                <SelectField
                   value={pratica.domestic ? 'nazionale' : 'estero'}
                   onChange={(v) => update({ domestic: v === 'nazionale' })}
                   options={[
@@ -81,7 +92,7 @@ export default function ChecklistPanel({ pratica, update, updateCargo, updateSto
                 />
               </Field>
               <Field label="Urgenza percepita dal cliente">
-                <Select
+                <SelectField
                   value={pratica.urgency}
                   onChange={(v) => update({ urgency: v as Urgency })}
                   options={[
@@ -95,15 +106,13 @@ export default function ChecklistPanel({ pratica, update, updateCargo, updateSto
                 <NumberInput value={pratica.kmGoogleMaps} onChange={(v) => update({ kmGoogleMaps: v })} placeholder="es. 230" min={0} suffix="km" />
               </Field>
               <Field label="Viaggio complesso / fuori standard?" hint="Es. più soste, permessi speciali, carico non standard">
-                <Toggle checked={pratica.complexTrip} onChange={(v) => update({ complexTrip: v })} labelYes="Sì → basetender" labelNo="No" />
+                <Segmented checked={pratica.complexTrip} onChange={(v) => update({ complexTrip: v })} labelYes="Sì → basetender" labelNo="No" />
               </Field>
             </div>
           </fieldset>
 
           <fieldset>
-            <legend className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              <Boxes size={12} /> Il carico — peso, numero e dimensioni dei pallet
-            </legend>
+            <Legend icon={<Boxes size={12} />}>Il carico — peso, numero e dimensioni dei pallet</Legend>
             <div className="grid grid-cols-3 gap-3">
               <Field label="Numero di pallet">
                 <NumberInput value={pratica.cargo.pallets} onChange={(v) => updateCargo({ pallets: v })} placeholder="es. 3" min={0} />
@@ -124,9 +133,7 @@ export default function ChecklistPanel({ pratica, update, updateCargo, updateSto
           </fieldset>
 
           <fieldset>
-            <legend className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              <Truck size={12} /> Ritiro
-            </legend>
+            <Legend icon={<Truck size={12} />}>Ritiro</Legend>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Indirizzo di ritiro">
                 <TextInput value={pratica.pickup.address} onChange={(v) => updateStop('pickup', { address: v })} placeholder="Via, città" />
@@ -140,15 +147,13 @@ export default function ChecklistPanel({ pratica, update, updateCargo, updateSto
                 </Field>
               </div>
               <Field label="Orario di ritiro tassativo?" hint="«Deve partire entro» e «preferibilmente» sono due trasporti diversi, con due prezzi diversi">
-                <Toggle checked={pratica.pickup.tassativo} onChange={(v) => updateStop('pickup', { tassativo: v })} labelYes="Tassativo" labelNo="Preferibile" />
+                <Segmented checked={pratica.pickup.tassativo} onChange={(v) => updateStop('pickup', { tassativo: v })} labelYes="Tassativo" labelNo="Preferibile" />
               </Field>
             </div>
           </fieldset>
 
           <fieldset>
-            <legend className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              <PackageCheck size={12} /> Consegna
-            </legend>
+            <Legend icon={<PackageCheck size={12} />}>Consegna</Legend>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Indirizzo di consegna">
                 <TextInput value={pratica.delivery.address} onChange={(v) => updateStop('delivery', { address: v })} placeholder="Via, città" />
@@ -162,21 +167,19 @@ export default function ChecklistPanel({ pratica, update, updateCargo, updateSto
                 </Field>
               </div>
               <Field label="Orario di consegna tassativo?" hint="La stessa domanda del ritiro: vale prezzo e scelta del vettore">
-                <Toggle checked={pratica.delivery.tassativo} onChange={(v) => updateStop('delivery', { tassativo: v })} labelYes="Tassativo" labelNo="Preferibile" />
+                <Segmented checked={pratica.delivery.tassativo} onChange={(v) => updateStop('delivery', { tassativo: v })} labelYes="Tassativo" labelNo="Preferibile" />
               </Field>
             </div>
           </fieldset>
 
           <fieldset>
-            <legend className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              <AlertTriangle size={12} /> Accessori e specifiche
-            </legend>
+            <Legend icon={<AlertTriangle size={12} />}>Accessori e specifiche</Legend>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Serve la sponda idraulica?" hint="Se a destino non c'è un muletto serve la sponda: esclude il Ducato e riduce la portata del cassonato a 800 kg">
-                <Toggle checked={pratica.tailLiftRequired} onChange={(v) => update({ tailLiftRequired: v })} labelYes="Sì, sponda" labelNo="No / muletto presente" />
+                <Segmented checked={pratica.tailLiftRequired} onChange={(v) => update({ tailLiftRequired: v })} labelYes="Sì, sponda" labelNo="No / muletto" />
               </Field>
               <Field label="Merce pericolosa (ADR)?" hint="Servono vettori abilitati: la pratica va su basetender">
-                <Toggle checked={pratica.adr} onChange={(v) => update({ adr: v })} labelYes="Sì, ADR" labelNo="No" />
+                <Segmented checked={pratica.adr} onChange={(v) => update({ adr: v })} labelYes="Sì, ADR" labelNo="No" />
               </Field>
             </div>
             <div className="mt-3">
@@ -185,22 +188,18 @@ export default function ChecklistPanel({ pratica, update, updateCargo, updateSto
               </Field>
             </div>
           </fieldset>
-        </div>
+        </CardContent>
       </Card>
 
-      <Card className="px-5 py-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Stato checklist</span>
-          {status.criticalMissing.length > 0 ? (
-            <Badge tone="amber">{status.criticalMissing.length} dati critici mancanti</Badge>
-          ) : (
-            <Badge tone="green">Dati critici completi</Badge>
-          )}
-          {pratica.pickup.tassativo && <Badge tone="indigo">Ritiro tassativo</Badge>}
-          {pratica.delivery.tassativo && <Badge tone="indigo">Consegna tassativa</Badge>}
-          {pratica.tailLiftRequired && <Badge tone="red">Sponda richiesta</Badge>}
-          {pratica.adr && <Badge tone="red">ADR</Badge>}
-        </div>
+      <Card className="gap-0 py-0">
+        <CardContent className="flex flex-wrap items-center gap-2 px-5 py-3.5">
+          <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Stato checklist</span>
+          {hasCriticalMissing ? <ToneBadge tone="amber">{status.criticalMissing.length} dati critici mancanti</ToneBadge> : <ToneBadge tone="green">Dati critici completi</ToneBadge>}
+          {pratica.pickup.tassativo && <ToneBadge tone="brand">Ritiro tassativo</ToneBadge>}
+          {pratica.delivery.tassativo && <ToneBadge tone="brand">Consegna tassativa</ToneBadge>}
+          {pratica.tailLiftRequired && <ToneBadge tone="red">Sponda richiesta</ToneBadge>}
+          {pratica.adr && <ToneBadge tone="red">ADR</ToneBadge>}
+        </CardContent>
       </Card>
     </div>
   )

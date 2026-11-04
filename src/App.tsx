@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Timer } from 'lucide-react'
+import { Route, Timer } from 'lucide-react'
 import type { Cargo, Pratica, StopInfo } from './lib/types'
 import { emptyPratica, type Config } from './lib/types'
 import { exportAll, loadConfig, loadPratiche, loadTheme, parseImport, saveConfig, savePratiche, saveTheme } from './lib/storage'
@@ -9,7 +9,13 @@ import ChecklistPanel from './components/ChecklistPanel'
 import DecisionPanel from './components/DecisionPanel'
 import BasetenderPanel from './components/BasetenderPanel'
 import SettingsModal from './components/SettingsModal'
-import { Badge } from './components/ui'
+import { ToneBadge } from './components/fields'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { Toaster } from '@/components/ui/sonner'
+import { BlurFade } from '@/components/ui/blur-fade'
+import { GridPattern } from '@/components/ui/grid-pattern'
 
 export default function App() {
   const [pratiche, setPratiche] = useState<Pratica[]>(loadPratiche)
@@ -68,70 +74,91 @@ export default function App() {
     : () => {}
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        pratiche={pratiche}
-        selectedId={selectedId}
-        dark={dark}
-        onSelect={setSelectedId}
-        onNew={createPratica}
-        onDelete={deletePratica}
-        onToggleDark={() => setDark((d) => !d)}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onExport={() => exportAll(pratiche, config)}
-        onImport={handleImport}
-      />
+    <TooltipProvider delayDuration={250}>
+      <div className="flex h-screen overflow-hidden bg-neutral-100 dark:bg-neutral-950">
+        <Sidebar
+          pratiche={pratiche}
+          selectedId={selectedId}
+          dark={dark}
+          onSelect={setSelectedId}
+          onNew={createPratica}
+          onDelete={deletePratica}
+          onToggleDark={() => setDark((d) => !d)}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onExport={() => exportAll(pratiche, config)}
+          onImport={handleImport}
+        />
 
-      <main className="min-w-0 flex-1 overflow-y-auto">
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/85 px-6 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/85">
-          <div className="min-w-0">
-            <h1 className="truncate text-sm font-bold tracking-tight">
-              {current ? current.origin && current.destination ? `${current.origin} → ${current.destination}` : 'Pratica senza tratta' : 'Nessuna pratica selezionata'}
-            </h1>
-            {current && (
-              <div className="truncate text-[11px] text-slate-400">
-                {current.clientCompany || 'Cliente da indicare'} · salvata automaticamente
+        <main className="min-w-0 flex-1 overflow-y-auto">
+          <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-background/80 px-6 py-3 backdrop-blur-md">
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-semibold tracking-tight">
+                {current ? (current.origin && current.destination ? `${current.origin} → ${current.destination}` : 'Pratica senza tratta') : 'Nessuna pratica selezionata'}
+              </h1>
+              {current && <div className="truncate text-[11px] text-muted-foreground">{current.clientCompany || 'Cliente da indicare'} · salvata automaticamente</div>}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {decision && (
+                <ToneBadge tone={decision.mode === 'regoletta' ? 'brand' : 'amber'} className="px-2.5 py-1 text-[11px] uppercase tracking-wider">
+                  {decision.mode === 'regoletta' ? 'Regoletta' : 'Basetender'}
+                </ToneBadge>
+              )}
+              <span className="hidden items-center gap-1.5 rounded-full border bg-muted px-2.5 py-1 font-mono text-[11px] text-muted-foreground md:inline-flex">
+                <Timer size={11} /> risposta ≤ 2 min
+              </span>
+            </div>
+          </header>
+
+          {importError && (
+            <div className="px-6 pt-4">
+              <Alert variant="destructive">
+                <AlertTitle>File non valido</AlertTitle>
+                <AlertDescription>Serve un JSON esportato da questa app.</AlertDescription>
+              </Alert>
+            </div>
+          )}
+
+          {current && decision ? (
+            <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 p-6 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+              <div className="space-y-4">
+                <BlurFade delay={0} duration={0.35}>
+                  <ChecklistPanel pratica={current} update={updateCurrent} updateCargo={updateCargo} updateStop={updateStop} />
+                </BlurFade>
+                {decision.mode === 'basetender' && (
+                  <BlurFade delay={0.05} duration={0.35}>
+                    <BasetenderPanel pratica={current} config={config} update={updateCurrent} />
+                  </BlurFade>
+                )}
               </div>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {decision && <Badge tone={decision.mode === 'regoletta' ? 'indigo' : 'amber'}>{decision.mode === 'regoletta' ? 'REGOLETTA' : 'BASETENDER'}</Badge>}
-            <span className="hidden items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200 md:inline-flex dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900">
-              <Timer size={11} /> Obiettivo: risposta entro 2 minuti
-            </span>
-          </div>
-        </header>
-
-        {importError && (
-          <div className="mx-6 mt-4 rounded-lg bg-rose-50 px-4 py-3 text-xs text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-            File non valido: serve un JSON esportato da questa app.
-          </div>
-        )}
-
-        {current && decision ? (
-          <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 p-6 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-            <div className="space-y-4">
-              <ChecklistPanel pratica={current} update={updateCurrent} updateCargo={updateCargo} updateStop={updateStop} />
-              {decision.mode === 'basetender' && <BasetenderPanel pratica={current} config={config} update={updateCurrent} />}
+              <div>
+                <BlurFade delay={0.08} duration={0.35}>
+                  <DecisionPanel pratica={current} config={config} update={updateCurrent} />
+                </BlurFade>
+              </div>
             </div>
-            <div>
-              <DecisionPanel pratica={current} config={config} update={updateCurrent} />
+          ) : (
+            <div className="relative flex h-full flex-col items-center justify-center gap-4 overflow-hidden p-10 text-center">
+              <GridPattern width={36} height={36} className="fill-neutral-400/20 stroke-neutral-400/20 [mask-image:radial-gradient(400px_circle_at_center,white,transparent)]" />
+              <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-brand text-brand-foreground shadow-sm">
+                <Route size={26} />
+              </div>
+              <div className="relative">
+                <h2 className="text-lg font-semibold tracking-tight">Inizia una nuova pratica</h2>
+                <p className="mx-auto mt-1 max-w-md text-sm leading-relaxed text-muted-foreground">
+                  Raccogli le informazioni del cliente con la checklist, lascia che la cascata di regole scelga mezzo e modalità di
+                  quotazione, e comunica il prezzo con il margine giusto. Tutto viene salvato su questo computer.
+                </p>
+              </div>
+              <Button onClick={createPratica} className="relative bg-brand text-brand-foreground hover:bg-brand/90">
+                Nuova pratica
+              </Button>
             </div>
-          </div>
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300">
-              <Timer size={26} />
-            </div>
-            <h2 className="text-lg font-bold tracking-tight">Inizia una nuova pratica</h2>
-            <p className="max-w-md text-sm text-slate-500 dark:text-slate-400">
-              Raccogli le informazioni del cliente con la checklist, lascia che la cascata di regole scelga mezzo e modalità di quotazione, e comunica il prezzo con il margine giusto. Tutto viene salvato su questo computer.
-            </p>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
 
-      {settingsOpen && <SettingsModal config={config} onChange={setConfig} onClose={() => setSettingsOpen(false)} />}
-    </div>
+        {settingsOpen && <SettingsModal config={config} onChange={setConfig} onClose={() => setSettingsOpen(false)} />}
+        <Toaster theme={dark ? 'dark' : 'light'} position="bottom-right" />
+      </div>
+    </TooltipProvider>
   )
 }
