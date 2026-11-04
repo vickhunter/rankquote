@@ -1,0 +1,25 @@
+assets/index-CIsdov2z.css
+  s_7893b6d09290a6::t_dd2b5e469cdec2 1
+assets/index-CRyjzZ_Y.js
+  s_7893b6d09290a6::t_023074ee140fcf 1-266
+favicon.svg
+  s_7893b6d09290a6::t_a5b0d3e7d97b4e 1-6
+index.html
+  s_7893b6d09290a6::t_2a757ea4abd8e4 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3143c149069a84d4e62c4e4a27b73872b721a931",
+  "prompts": {},
+  "sessions": {
+    "s_7893b6d09290a6": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "even-pedestrian",
+        "model": "unknown"
+      },
+      "human_author": "vickhunter <motricalavictor@gmail.com>"
+    }
+  }
+}
