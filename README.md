@@ -1,4 +1,4 @@
-# Pratica Facile — checklist e quotazioni per Junior Transport Coordinator
+# RankQuote — checklist e quotazioni per Junior Transport Coordinator
 
 Tool deterministico per gestire una pratica di trasporto urgente dall'arrivo della richiesta alla quotazione al cliente, seguendo la logica aziendale: checklist delle informazioni obbligatorie, scelta a cascata del mezzo e della modalità di quotazione (regoletta o basetender), calcolo trasparente passo per passo e margine 10–15% con suggerimento basato sui km.
 

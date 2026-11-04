@@ -26,10 +26,10 @@ export default function Sidebar({ pratiche, selectedId, dark, onSelect, onNew, o
   return (
     <aside className="flex h-full w-72 shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center gap-2.5 px-4 py-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-extrabold text-white shadow-sm">TU</div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-extrabold text-white shadow-sm">RQ</div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold tracking-tight">Pratica Facile</div>
-          <div className="text-[11px] text-slate-400">Checklist & quotazioni JTC</div>
+          <div className="truncate text-sm font-bold tracking-tight">RankQuote</div>
+          <div className="text-[11px] text-slate-400">Checklist & quotazioni trasporti</div>
         </div>
       </div>
 
