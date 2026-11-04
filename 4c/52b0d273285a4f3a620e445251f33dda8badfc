@@ -1,0 +1,18 @@
+README.md
+  h_ac70456ef744ba 1
+index.html
+  h_ac70456ef744ba 6
+src/components/Sidebar.tsx
+  h_ac70456ef744ba 29,31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c52b0d273285a4f3a620e445251f33dda8badfc",
+  "prompts": {},
+  "humans": {
+    "h_ac70456ef744ba": {
+      "author": "vickhunter <motricalavictor@gmail.com>"
+    }
+  }
+}
