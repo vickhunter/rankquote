@@ -1,0 +1,20 @@
+vite.config.ts
+  s_7893b6d09290a6::t_524437843cf183 22
+  s_7893b6d09290a6::t_08449c2e610866 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e36b7d0b29fe1c3c402752bec0a788ffafdba83",
+  "prompts": {},
+  "sessions": {
+    "s_7893b6d09290a6": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "even-pedestrian",
+        "model": "unknown"
+      },
+      "human_author": "vickhunter <motricalavictor@gmail.com>"
+    }
+  }
+}
